@@ -1,0 +1,184 @@
+import pygame
+import pygame_menu
+import time 
+from pygame_menu import themes
+
+# Initialize pygame
+pygame.init()
+
+# Player scores
+player1_score = 0
+player2_score = 0
+
+# Main Program Loop
+def main():
+    global player1_score, player2_score
+    
+    # Constants and Variables
+    SCREEN_WIDTH = 1192
+    SCREEN_HEIGHT = 600
+    BALL_SIZE = 20
+    PADDLE_WIDTH = 150
+    PADDLE_HEIGHT = 20
+    PADDLE_SPEED = 10
+    BG = pygame.image.load("VS Projects\PING\Software Backdrop.png")
+    BALL_SPEED_X = 7
+    BALL_SPEED_Y = 7
+    WHITE = (255, 255, 255)
+    BLACK = (0, 0, 0)
+
+    # Create the screen
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    pygame.display.set_caption('PING')
+
+    def start_the_game():
+        mainmenu._open(loading)
+        pygame.time.set_timer(update_loading, 30)
+    
+    def rules_menu():
+        mainmenu._open(rules)
+
+    # Paddles and ball
+    player1_paddle = pygame.Rect((SCREEN_WIDTH - PADDLE_WIDTH) // 2, 30, PADDLE_WIDTH, PADDLE_HEIGHT)
+    player2_paddle = pygame.Rect((SCREEN_WIDTH - PADDLE_WIDTH) // 2, (SCREEN_HEIGHT - PADDLE_HEIGHT - 30), PADDLE_WIDTH, PADDLE_HEIGHT)
+    ball = pygame.Rect((SCREEN_WIDTH - BALL_SIZE) // 2, (SCREEN_HEIGHT - BALL_SIZE) // 2, BALL_SIZE, BALL_SIZE)
+
+    # Ball direction
+    global ball_speed_x, ball_speed_y
+    ball_speed_x = BALL_SPEED_X
+    ball_speed_y = BALL_SPEED_Y
+
+    # Font
+    font = pygame.font.Font(None, 36)
+
+    # Main menu
+    mainmenu = pygame_menu.Menu('Welcome', SCREEN_WIDTH, SCREEN_HEIGHT, theme=themes.THEME_SOLARIZED)
+    mainmenu.add.button('Play', start_the_game)
+    mainmenu.add.button('Rules', rules_menu)
+    mainmenu.add.button('Quit', pygame_menu.events.EXIT)
+    
+    rules = pygame_menu.Menu('Rules', SCREEN_WIDTH, SCREEN_HEIGHT, theme=themes.THEME_BLUE)
+    rules.add.image("VS Projects\PING\George Lahoud - Major Project.png")
+    
+    loading = pygame_menu.Menu('Loading the Game...', SCREEN_WIDTH, SCREEN_HEIGHT, theme=themes.THEME_DARK)
+    loading.add.progress_bar("Progress", progressbar_id = "1", default=0, width = 200, )
+    
+    arrow = pygame_menu.widgets.LeftArrowSelection(arrow_size = (10, 15))
+    
+    def draw():  # Draw game screen  
+        screen.fill(BLACK)
+        screen.blit(BG, (0, 0))
+        
+        # Draw Paddles
+        pygame.draw.rect(screen, WHITE, player1_paddle)
+        pygame.draw.rect(screen, WHITE, player2_paddle)
+        
+        # Draw ball
+        pygame.draw.ellipse(screen, WHITE, ball)
+
+        # Draw scores
+        global player1_score, player2_score
+        score_text = font.render(f"{player1_score} - {player2_score}", True, WHITE)
+        screen.blit(score_text, (SCREEN_WIDTH // 2 - score_text.get_width() // 2, (SCREEN_HEIGHT // 2)))
+        pygame.display.flip()
+
+    def game_end_text():
+        screen.blit(winner_text, (SCREEN_WIDTH // 2 - winner_text.get_width() // 2, (SCREEN_HEIGHT // 2) - 90))
+        screen.blit(retry_text, (SCREEN_WIDTH // 2 - retry_text.get_width() // 2, (SCREEN_HEIGHT // 2) + 150))
+        pygame.display.flip()
+
+    def handle_input():
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_a] and player1_paddle.left > 0:
+            player1_paddle.x -= PADDLE_SPEED
+        if keys[pygame.K_d] and player1_paddle.right < SCREEN_WIDTH:
+            player1_paddle.x += PADDLE_SPEED
+        if keys[pygame.K_LEFT] and player2_paddle.left > 0:
+            player2_paddle.x -= PADDLE_SPEED
+        if keys[pygame.K_RIGHT] and player2_paddle.right < SCREEN_WIDTH:
+            player2_paddle.x += PADDLE_SPEED
+
+    def move_ball():
+        global ball_speed_x, ball_speed_y, player2_score, player1_score
+        ball.x += ball_speed_x
+        ball.y += ball_speed_y
+
+        # Ball collision with top and bottom walls
+        if ball.left <= 0 or ball.right >= SCREEN_WIDTH:
+            ball_speed_x = -ball_speed_x
+        # Ball collision with paddles
+        if ball.colliderect(player1_paddle) or ball.colliderect(player2_paddle):
+            ball_speed_y = -ball_speed_y                
+        # Ball goes out of bounds
+        if ball.top <= 0:
+            player2_score = player2_score + 1
+            reset_screen()
+        if ball.bottom >= SCREEN_HEIGHT:
+            player1_score = player1_score + 1
+            reset_screen()
+
+    def reset_screen():
+        global ball_speed_x, ball_speed_y
+        ball.x = (SCREEN_WIDTH - BALL_SIZE) // 2
+        ball.y = (SCREEN_HEIGHT - BALL_SIZE) // 2
+        player1_paddle.x = ((SCREEN_WIDTH - PADDLE_WIDTH) // 2)
+        player2_paddle.x = ((SCREEN_WIDTH - PADDLE_WIDTH) // 2)
+        time.sleep(1)
+    # loading event
+    update_loading = pygame.USEREVENT + 0
+    
+    # Main game loop
+    while True:
+        events = pygame.event.get()
+        for event in events:
+            if event.type == update_loading:
+                progress = loading.get_widget("1")
+                progress.set_value(progress.get_value() + 1)
+                if progress.get_value() == 100:
+                    pygame.time.set_timer(update_loading, 0)
+                    mainmenu.disable()  
+                    running = True
+                    clock = pygame.time.Clock()
+                    while running:
+                        draw()
+                        
+                        for event in pygame.event.get():
+                            if event.type == pygame.QUIT:
+                                running = False
+                        # Game end
+                        if player1_score >= 5:
+                                winner_text = font.render(f"Player 1 Wins ({player1_score} - {player2_score})", True, WHITE)
+                                retry_text = font.render(f"Click 'r' to restart", True, WHITE)
+                                game_end_text()
+                                running = False
+                                    
+                        if player2_score >= 5:
+                                winner_text = font.render(f"Player 2 Wins ({player1_score} - {player2_score})", True, WHITE)
+                                retry_text = font.render(f"Click 'r' to restart", True, WHITE)
+                                game_end_text()
+                                running = False
+                        handle_input()
+                        move_ball()
+                        clock.tick(60)
+            # Restart
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_r]:
+                restart() 
+            # Quit
+            if event.type == pygame.QUIT:
+                exit()
+        # Menu screen
+        if mainmenu.is_enabled():
+            mainmenu.update(events)
+            mainmenu.draw(screen)
+            if (mainmenu.get_current().get_selected_widget()):
+                arrow.draw(screen, mainmenu.get_current().get_selected_widget())
+        pygame.display.update()
+# Restart function
+def restart():
+    global player1_score, player2_score
+    player1_score = 0
+    player2_score = 0
+    main()
+    exit()
+main()
